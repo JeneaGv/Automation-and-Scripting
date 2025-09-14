@@ -19,17 +19,17 @@ if [ ! -d "$CLEAN_DIR" ]; then
     exit 1
 fi
 
-DELETED_COUNT=0
+DELETED_COUNT=0 #initializam contorul de fisiere sterse
 
 echo "Starting cleanup in directory '$CLEAN_DIR'..."
 
-for TYPE in "${FILE_TYPES[@]}"; do
+for TYPE in "${FILE_TYPES[@]}"; do #parcurgem fiecare tip de fisier specificat
 
-    echo "Searching for files with extension '$TYPE'..."
+    echo "Searching for files with extension '$TYPE'..." #afisam tipul curent de fisier
 
-    CURRENT_DELETED=$(find "$CLEAN_DIR" -type f -name "*$TYPE" -delete -print | wc -l)
+    CURRENT_DELETED=$(find "$CLEAN_DIR" -type f -name "*$TYPE" -delete -print | wc -l) #stergem fisierele si numaram cate au fost sterse
     
-    DELETED_COUNT=$((DELETED_COUNT + CURRENT_DELETED))
+    DELETED_COUNT=$((DELETED_COUNT + CURRENT_DELETED)) #actualizam contorul total
 done
 
 echo "Cleanup complete."
