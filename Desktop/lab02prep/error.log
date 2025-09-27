@@ -1,0 +1,1 @@
+2025-09-27 21:09:32,528 - ERROR - Parameters: FROM=XXX, TO=EUR, DATE=2025-01 | Message: time data '2025-01' does not match format '%Y-%m-%d'
