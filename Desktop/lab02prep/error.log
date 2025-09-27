@@ -1,1 +1,2 @@
 2025-09-27 21:09:32,528 - ERROR - Parameters: FROM=XXX, TO=EUR, DATE=2025-01 | Message: time data '2025-01' does not match format '%Y-%m-%d'
+2025-09-27 21:29:16,356 - ERROR - Parameters: FROM=USD, TO=EUR, DATE=2026-01-01 | Message: Input Error: Date 2026-01-01 is outside the supported range (up to 2025-09-15).

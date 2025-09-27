@@ -7,10 +7,14 @@ from datetime import datetime
 
 # --- Constants and Configuration ---
 API_BASE_URL = "http://localhost:8080/"
-# API_KEY este preluată din sample.env/README.md
+# API_KEY este luată din sample.env/README.md
 API_KEY = "EXAMPLE_API_KEY"
 DATA_DIR = "data"
 LOG_FILE = "error.log"
+
+# Intervalul maxim de date suportat conform documentatiei proiectului
+MAX_DATE_STR = "2025-09-15"
+MAX_DATE = datetime.strptime(MAX_DATE_STR, '%Y-%m-%d')
 
 # Configurează logarea pentru a scrie erorile în error.log
 logging.basicConfig(
@@ -22,7 +26,7 @@ logging.basicConfig(
 def get_exchange_rate(from_currency: str, to_currency: str, date_str: str) -> dict:
     """
     Recuperează rata de schimb de la API-ul local.
-    Sunt necesari parametri GET pentru monede/dată și un corp POST pentru cheia API.
+    Cheia API este trimisă în corpul POST.
     """
     
     # 1. Construiește parametrii GET (URL query parameters)
@@ -39,20 +43,17 @@ def get_exchange_rate(from_currency: str, to_currency: str, date_str: str) -> di
 
     print(f"-> Requesting rate for {from_currency.upper()}/{to_currency.upper()} on {date_str}...")
 
-    # 3. Execută cererea POST. Parametrii GET sunt trimiși prin 'params', 
-    # iar cheia API este trimisă în corpul POST prin 'data'.
+    # 3. Execută cererea POST
+    # Trimitem cheia API în corpul cererii (data) și parametri (from, to, date) în URL (params)
     response = requests.post(API_BASE_URL, params=params, data=post_data)
-    response.raise_for_status() # Ridică o excepție pentru coduri de stare HTTP proaste (4xx sau 5xx)
+    response.raise_for_status() # Ridică o excepție pentru erori HTTP (4xx sau 5xx)
 
     # 4. Parsează răspunsul JSON
     data = response.json()
     
-    # DEBUG: Afișează răspunsul complet pentru a verifica autentificarea
-    # print(f"DEBUG API RESPONSE: {data}")
-
-    # 5. Gestionează erorile din corpul răspunsului API (e.g., monedă invalidă)
+    # 5. Gestionează erorile din corpul răspunsului API (e.g., monedă/dată invalidă)
     if data.get('error'):
-        # API-ul returnează cod 200 chiar și pe erori de validare, deci trebuie să verificăm corpul
+        # API-ul returnează cod 200 chiar și pe erori de validare
         raise ValueError(f"API Error: {data['error']}")
 
     # 6. Returnează datele ratei
@@ -63,14 +64,14 @@ def save_data(data: dict, from_currency: str, to_currency: str, date_str: str):
     Salvează datele primite într-un fișier JSON în directorul 'data'.
     """
     
-    # 1. Asigură-te că directorul 'data' există.
+    # 1. Asigură-te că directorul 'data' există la rădăcina proiectului.
     os.makedirs(DATA_DIR, exist_ok=True)
     
-    # 2. Construiește numele fișierului: e.g., USD_EUR_2025-01-01.json
+    # 2. Construiește numele fișierului: e.g., USD_RON_2026-01-01.json
     filename = f"{from_currency.upper()}_{to_currency.upper()}_{date_str}.json"
     filepath = os.path.join(DATA_DIR, filename)
     
-    # 3. Scrie datele în fișierul JSON
+    # 3. Scrie datele în fișierul JSON cu indentare
     with open(filepath, 'w') as f:
         json.dump(data, f, indent=4)
     
@@ -78,20 +79,24 @@ def save_data(data: dict, from_currency: str, to_currency: str, date_str: str):
 
 def main():
     """
-    Funcția principală pentru a rula scriptul.
+    Funcția principală pentru a valida input-ul și a apela funcțiile de preluare/salvare.
     """
     # 1. Verifică argumentele din linia de comandă
     if len(sys.argv) != 4:
-        print("Usage: python lab02\\currency_rate.py <FROM_CURRENCY> <TO_CURRENCY> <YYYY-MM-DD>")
-        print("Example: python lab02\\currency_rate.py USD EUR 2025-03-05")
+        print("Usage: python lab02/currency_exchange_rate.py <FROM_CURRENCY> <TO_CURRENCY> <YYYY-MM-DD>")
+        print("Example: python lab02/currency_exchange_rate.py USD EUR 2025-03-05")
         sys.exit(1)
 
     # 2. Asignează argumentele
     from_currency, to_currency, date_str = sys.argv[1:4]
 
     try:
-        # Validare simplă de format dată
-        datetime.strptime(date_str, '%Y-%m-%d')
+        # Validare simplă a formatului datei
+        request_date = datetime.strptime(date_str, '%Y-%m-%d')
+        
+        # 🎯 VERIFICARE ADĂUGATĂ: Dacă data cerută depășește data maximă suportată de API
+        if request_date > MAX_DATE:
+            raise ValueError(f"Input Error: Date {date_str} is outside the supported range (up to {MAX_DATE_STR}).")
         
         # 3. Obține rata
         rate_data = get_exchange_rate(from_currency, to_currency, date_str)
@@ -99,12 +104,12 @@ def main():
         # 4. Salvează rata
         save_data(rate_data, from_currency, to_currency, date_str)
 
-        # 5. Afișează rezultatul
+        # 5. Afișează rezultatul final
         final_rate = rate_data.get('data', {}).get('rate')
         print(f"SUCCESS: Exchange Rate (1 {from_currency.upper()} to {to_currency.upper()} on {date_str}) is: {final_rate}")
         
     except (requests.exceptions.RequestException, ValueError, Exception) as e:
-        # 6. Gestionează erorile (Rețea, HTTP Status, API, Invalid Input)
+        # 6. Gestionează erorile și loghează-le
         error_message = f"ERROR processing request: {e}"
         print(f"\nFATAL: {error_message}")
         print(f"Details saved to {LOG_FILE}")
