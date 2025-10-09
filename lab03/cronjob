@@ -1,0 +1,9 @@
+# Set shell and path for cron environment
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Daily at 06:00 AM (0 6 * * *) for MDL to EUR (previous day)
+0 6 * * * python3 /usr/src/app/currency_exchange_rate.py MDL EUR daily >> /var/log/cron.log 2>&1
+
+# Weekly on Friday at 05:00 PM (0 17 * * 5) for MDL to USD (previous week)
+0 17 * * 5 python3 /usr/src/app/currency_exchange_rate.py MDL USD weekly >> /var/log/cron.log 2>&1
