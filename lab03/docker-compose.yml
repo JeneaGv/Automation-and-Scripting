@@ -1,0 +1,36 @@
+services:
+  web:
+    image: php:8.3-apache
+    container_name: php_apache
+    ports:
+      - "8080:80"
+    volumes:
+      - ./app:/var/www/html
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - my_app_network
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cron_container
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - cron_logs:/var/log
+    restart: unless-stopped
+    depends_on:
+      - web
+    networks:
+      - my_app_network
+
+networks:
+  my_app_network:
+    driver: bridge
+
+volumes:
+  cron_logs:

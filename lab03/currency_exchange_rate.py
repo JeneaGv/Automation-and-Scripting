@@ -6,9 +6,9 @@ import requests
 from datetime import datetime
 
 # --- Constants and Configuration ---
-API_BASE_URL = "http://localhost:8080/"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8080/")
 # API_KEY este luată din sample.env/README.md
-API_KEY = "EXAMPLE_API_KEY"
+API_KEY = os.getenv("API_KEY", "EXAMPLE_API_KEY")
 DATA_DIR = "data"
 LOG_FILE = "error.log"
 
@@ -93,10 +93,6 @@ def main():
     try:
         # Validare simplă a formatului datei
         request_date = datetime.strptime(date_str, '%Y-%m-%d')
-        
-        # 🎯 VERIFICARE ADĂUGATĂ: Dacă data cerută depășește data maximă suportată de API
-        if request_date > MAX_DATE:
-            raise ValueError(f"Input Error: Date {date_str} is outside the supported range (up to {MAX_DATE_STR}).")
         
         # 3. Obține rata
         rate_data = get_exchange_rate(from_currency, to_currency, date_str)
