@@ -1,33 +1,33 @@
-# Use a slim Python image
-FROM python:3.10-slim
+# Use official Python image as base
+FROM python:3.11-slim
 
-# Set the working directory
-WORKDIR /usr/src/app
-
-# Install cron and other necessary tools
+# Install cron and required system dependencies
 RUN apt-get update && \
     apt-get install -y cron && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies (Adjust this line if your script needs other libraries)
-# We assume 'requests' might be needed:
-RUN pip install --no-cache-dir requests
+# Set working directory
+WORKDIR /app
 
-# Copy the application script
+# Copy requirements file and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the Python script
 COPY currency_exchange_rate.py .
 
-# Copy the cronjob file to the cron configuration directory
-COPY cronjob /etc/cron.d/cronjob
+# Copy the cronjob file
+COPY cronjob /etc/cronjob
 
-# Give execution permission to the cron job file
-RUN chmod 0644 /etc/cron.d/cronjob
+# Copy the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
 
-# Copy and make the entrypoint script executable
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Make the entrypoint script executable
+RUN chmod +x /entrypoint.sh
 
-# Set the entrypoint to the shell script
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Create data directory for JSON files
+RUN mkdir -p /app/data
 
-# Command is optional
-CMD [""]
+# Set the entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
