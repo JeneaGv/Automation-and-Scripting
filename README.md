@@ -14,7 +14,7 @@
 <img width="752" height="465" alt="image" src="https://github.com/user-attachments/assets/dc97c7ae-09f6-499a-8394-b29095108b4a" />
 
 
-În directorul lab03, creează un fișier numit cronjob. În acest fișier, specifică sarcinile cron care vor rula scriptul currency_exchange_rate.py:
+1.În directorul lab03, creează un fișier numit cronjob. În acest fișier, specifică sarcinile cron care vor rula scriptul currency_exchange_rate.py:
 
 Zilnic, la ora 06:00, pentru a obține cursul de schimb MDL către EUR pentru ziua precedentă.
 
@@ -27,13 +27,20 @@ fisierul cronjob :
 0 17 * * 5 cd /app && /usr/local/bin/python currency_exchange_rate.py MDL USD $(date -d "last friday" +\%Y-\%m-\%d) >> /var/log/cron.log 2>&1
 
 ```
+
+Acesta primeste ca parametri * * * * * si ce trebuie sa execute
+
+Formatul stelelor=Minuta Ora Ziua Lunii Luna si Ziua Saptămânii
+
 **Important:**
 
 Fișierul trebuie să aibă line endings de tip Unix (LF, nu CRLF)
+
 Trebuie să existe un newline la sfârșitul fișierului
+
 Nu lăsați linii goale între intrări
 
-Creează un fișier Dockerfile în directorul lab03, bazat pe imaginea Ubuntu sau pe imaginea oficială Python, care va:
+2.Creează un fișier Dockerfile în directorul lab03, bazat pe imaginea Ubuntu sau pe imaginea oficială Python, care va:
 
 Instala toate dependențele necesare pentru rularea scriptului (cron, Python și bibliotecile necesare).
 
@@ -168,12 +175,34 @@ asteptam ora 6:00 si vedem ca acesta a salvat datele cu succes
 
 # Structura proiectului 
 
-lab03/
-│
-├── currency_exchange_rate.py     Scriptul Python care obține cursurile valutare (logica principală)
-├── cronjob                       Fișierul cu programările cron (când se rulează scriptul)
-├── entrypoint.sh                 Scriptul care pornește cron-ul și afișează logurile (entrypoint-ul containerului)
-├── Dockerfile                    Definiția pentru construirea imaginii Docker
-├── docker-compose.yml            Simplifică procesul de construire și rulare a containerului
-└── logs/                         Directorul unde sunt salvate logurile în afara containerului
- 
+lab03
+
+currency_exchange_rate.py     Scriptul Python care obține cursurile valutare (logica principală)
+
+cronjob                       Fișierul cu programările cron (când se rulează scriptul)
+
+entrypoint.sh                 Scriptul care pornește cron-ul și afișează logurile (entrypoint-ul containerului
+
+Dockerfile                    Definiția pentru construirea imaginii Docker
+
+docker-compose.yml            Simplifică procesul de construire și rulare a containerului
+
+# Concluzii 
+
+Lucrarea de laborator a demonstrat modul de automatizare a execuției scripturilor Python 
+
+utilizând **cron** într-un mediu containerizat **Docker**. Configurarea corectă a fișierelor `cronjob`, `entrypoint.sh` și `Dockerfile` 
+
+asigură rularea periodică și fiabilă a sarcinilor fără intervenție manuală. Integrarea cu **Docker Compose** facilitează construirea și rularea containerelor 
+
+într-un mod portabil și reproductibil. Astfel, proiectul evidențiază eficiența combinării automatizării și
+
+containerizării pentru gestionarea proceselor repetabile în dezvoltarea software.
+
+# Bibliografie 
+
+https://elearning.usm.md/mod/lesson/view.php?id=315207
+
+https://en.wikipedia.org/wiki/Cron
+
+
