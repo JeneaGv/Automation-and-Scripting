@@ -1,127 +1,179 @@
-# Writing a Simple Shell Script for Task Automation
+# Task Scheduler (cron) Configuration
 
 # Obiectiv 
 
-Invatam să cream si sa executam scripturi simple de Shell pentru a automatiza sarcinile de rutină în sistemul de operare Linux.
+Învațăm cum să configurezi **planificatorul de sarcini (cron)** pentru a **automatiza executarea scripturilor**.
 
 # Sarcina
 
-Curatarea fisierelor temporare:
+În proiectul de automatizare, creează o ramură (branch) lab03. Creează un director lab03 și copiază acolo fișierele din lucrarea de laborator nr. 2 (folderul lab02).
 
-Pregatim mediul de executare 
-
-<img width="753" height="156" alt="image" src="https://github.com/user-attachments/assets/7d8b1ef7-90a5-4fd4-b1f5-9ff5eaa9d8b1" />
+<img width="757" height="110" alt="image" src="https://github.com/user-attachments/assets/6abe80b3-a87f-4ba9-8313-25c2c8660937" />
 
 
-Scriptul trebuie să se numească cleanup.sh
+<img width="752" height="465" alt="image" src="https://github.com/user-attachments/assets/dc97c7ae-09f6-499a-8394-b29095108b4a" />
 
-<img width="408" height="58" alt="image" src="https://github.com/user-attachments/assets/543d71ba-1331-49ab-9559-25542adca9b2" />
 
-Scriptul trebuie să accepte cel puțin un argument: calea către directorul care trebuie curățat
+În directorul lab03, creează un fișier numit cronjob. În acest fișier, specifică sarcinile cron care vor rula scriptul currency_exchange_rate.py:
 
-```
-if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <directory_to_clean> [file_type_1] [file_type_2] ..."
-    echo "By default, files with a .tmp extension are deleted."
-    exit 1
-fi
-```
+Zilnic, la ora 06:00, pentru a obține cursul de schimb MDL către EUR pentru ziua precedentă.
 
-Argumentele rămase sunt opționale și specifică tipurile de fișiere care trebuie șterse (ex: .tmp, .log).
+Săptămânal, vinerea la ora 17:00, pentru a obține cursul de schimb MDL către USD pentru săptămâna precedentă.
 
-1. Extragerea argumentelor opționale
+fisierul cronjob :
 
 ```
-shift
-FILE_TYPES=("$@")
-```
-
-shift-muta toti parametrii de pozitie ($1, $2, $3, etc.) cu o pozitie la stanga. 
-
-Astfel, primul argument ($1, care era directorul) este eliminat, iar $2 devine noul $1, $3 devine noul $2 si asa mai departe.
-
-
-Implicit, fișierele cu extensia .tmp sunt șterse.
+0 6 * * * cd /app && /usr/local/bin/python currency_exchange_rate.py MDL EUR $(date -d "yesterday" +\%Y-\%m-\%d) >> /var/log/cron.log 2>&1
+0 17 * * 5 cd /app && /usr/local/bin/python currency_exchange_rate.py MDL USD $(date -d "last friday" +\%Y-\%m-\%d) >> /var/log/cron.log 2>&1
 
 ```
-if [ ${#FILE_TYPES[@]} -eq 0 ]; then
-    FILE_TYPES=(".tmp")
-fi
-```
+**Important:**
 
-La finalul execuției, scriptul trebuie să afișeze numărul de fișiere șterse
+Fișierul trebuie să aibă line endings de tip Unix (LF, nu CRLF)
+Trebuie să existe un newline la sfârșitul fișierului
+Nu lăsați linii goale între intrări
 
-```
-DELETED_COUNT=0 #initializam contorul de fisiere sterse
+Creează un fișier Dockerfile în directorul lab03, bazat pe imaginea Ubuntu sau pe imaginea oficială Python, care va:
 
-echo "Starting cleanup in directory '$CLEAN_DIR'..."
+Instala toate dependențele necesare pentru rularea scriptului (cron, Python și bibliotecile necesare).
 
-for TYPE in "${FILE_TYPES[@]}"; do #parcurgem fiecare tip de fisier specificat
+Copia scriptul currency_exchange_rate.py, fișierul cronjob și scriptul entrypoint în container.
 
-    echo "Searching for files with extension '$TYPE'..." #afisam tipul curent de fisier
+Configura serviciul cron pentru a executa sarcinile specificate în fișierul cronjob.
 
-    CURRENT_DELETED=$(find "$CLEAN_DIR" -type f -name "*$TYPE" -delete -print | wc -l) #stergem fisierele si numaram cate au fost sterse
-    
-    DELETED_COUNT=$((DELETED_COUNT + CURRENT_DELETED)) #actualizam contorul total
-done
-```
+Porni cron în mod de fundal (background) atunci când containerul este lansat.
 
-Scriptul trebuie să verifice dacă directorul specificat există și să afișeze mesaje de eroare corespunzătoare.
+Scrie rezultatele executării sarcinilor cron în fișierul /var/log/cron.log.
 
 ```
-if [ ! -d "$CLEAN_DIR" ]; then
-    echo "Error: Directory '$CLEAN_DIR' does not exist."
-    exit 1
-fi
+# Use official Python image as base
+FROM python:3.11-slim
+
+# Install cron and required system dependencies
+RUN apt-get update && \
+    apt-get install -y cron && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the Python script
+COPY currency_exchange_rate.py .
+
+# Copy the cronjob file
+COPY cronjob /etc/cronjob
+
+# Copy the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+
+# Make the entrypoint script executable
+RUN chmod +x /entrypoint.sh
+
+# Create data directory for JSON files
+RUN mkdir -p /app/data
+
+# Set the entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 ```
 
-# Verificarea lucrarii scriptului 
+Pentru o utilizare mai ușoară a cron, se recomandă folosirea unui script entrypoint care va configura și porni cron-ul.
 
-cu ajutorul comenzii touch cream fisiere cu diferite extensii
+```
+#!/bin/sh
 
-<img width="456" height="143" alt="image" src="https://github.com/user-attachments/assets/3cace306-b9f4-423e-a519-d42f7413c5e8" />
+env > /etc/environment
+crontab /etc/cronjob
 
-Prima data incercam scriptul fara a indica extensiile dorite:
+create_log_file() {
+    echo "Creating log file..."
+    touch /var/log/cron.log
+    chmod 666 /var/log/cron.log
+    echo "Log file created at /var/log/cron.log"
+}
 
-<img width="753" height="81" alt="image" src="https://github.com/user-attachments/assets/919e7965-20d3-4461-a1f0-3c93368cd93a" />
+monitor_logs() {
+    echo "=== Monitoring cron logs ==="
+    tail -f /var/log/cron.log
+}
 
-<img width="436" height="93" alt="image" src="https://github.com/user-attachments/assets/84ffc11b-2b1f-4d6c-9c17-32b2e09ba589" />
+run_cron() {
+    echo "=== Starting cron daemon ==="
+    exec cron -f
+}
 
-Observam rezultatul ca au fost sterse fisierele cu extensia .tmp
+create_log_file
+monitor_logs &
+run_cron
+```
 
-Acum cream din nou fisierele sterse si incercam sa specificam extensiile dorite 
+Creează un fișier docker-compose.yml în directorul lab03, care va folosi fișierul Dockerfile creat anterior pentru a construi imaginea și a rula containerul.
 
-<img width="749" height="79" alt="image" src="https://github.com/user-attachments/assets/712ef66d-2a9a-4d85-8fcf-f0f5550dcab6" />
+```
+services:
+  web:
+    image: php:8.3-apache
+    container_name: php_apache
+    ports:
+      - "8080:80"
+    volumes:
+      - ./app:/var/www/html
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - my_app_network
 
-<img width="439" height="56" alt="image" src="https://github.com/user-attachments/assets/cfe64424-d117-466a-a28d-91e25b8d2ff7" />
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cron_container
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - cron_logs:/var/log
+    restart: unless-stopped
+    depends_on:
+      - web
+    networks:
+      - my_app_network
 
-Observam ca a ramas doar fisierul .txt => scriptul a fost creat cu succes
+networks:
+  my_app_network:
+    driver: bridge
 
-# Concluzie 
+volumes:
+  cron_logs:
+```
 
-Scriptul cleanup.sh este un exemplu excelent de automatizare a unei sarcini simple, dar repetitive, pe care o poți rula pe orice sistem de operare bazat pe Linux, inclusiv WSL. A
+Dupa construirea tuturor fisierelor necesare  construim și să rulăm containerul cu cron
 
-m reușit să creăm un script care este nu doar funcțional, dar și robust, îndeplinind toate cerințele inițiale: validarea argumentelor, flexibilitatea de a accepta tipuri de fișiere personalizate, 
+Folosim comanda docker-compose up --build -d care
 
-gestionarea erorilor prin verificarea existenței directorului și oferirea unui feedback clar prin afișarea numărului de fișiere șterse. 
+Construiește din nou imaginea și pornește containerul în fundal
 
-Acest script demonstrează cum câteva rânduri de cod de shell pot economisi timp și simplifica sarcinile de mentenanță de bază, fiind o bază solidă pentru a construi scripturi mai complexe în viitor.
+<img width="747" height="189" alt="image" src="https://github.com/user-attachments/assets/6eeda6c0-b287-4f8f-8d86-dbe3a06a88b3" />
 
-# Bilbiografia
+folosim comanda docker-compose logs -f cron pentru a vedea functionalitatea acestuia:
 
-https://www.shellscript.sh/
+asteptam ora 6:00 si vedem ca acesta a salvat datele cu succes
 
-https://tldp.org/LDP/abs/html/
+<img width="742" height="159" alt="image" src="https://github.com/user-attachments/assets/ee6598bb-8fa1-405b-9d3d-e88cb0d9bc08" />
 
-https://tldp.org/LDP/Bash-Beginners-Guide/html/
+# Structura proiectului 
 
-https://linuxcommand.org/tlcl.php
-
-https://www.gnu.org/software/bash/manual/bash.html
-
-
-
-
-
-
-   
+lab03/
+│
+├── currency_exchange_rate.py     Scriptul Python care obține cursurile valutare (logica principală)
+├── cronjob                       Fișierul cu programările cron (când se rulează scriptul)
+├── entrypoint.sh                 Scriptul care pornește cron-ul și afișează logurile (entrypoint-ul containerului)
+├── Dockerfile                    Definiția pentru construirea imaginii Docker
+├── docker-compose.yml            Simplifică procesul de construire și rulare a containerului
+└── logs/                         Directorul unde sunt salvate logurile în afara containerului
+ 
