@@ -1,127 +1,198 @@
-# Writing a Simple Shell Script for Task Automation
+# Configurarea Jenkins pentru Automatizarea Sarcinilor DevOps
 
 # Obiectiv 
 
-Invatam să cream si sa executam scripturi simple de Shell pentru a automatiza sarcinile de rutină în sistemul de operare Linux.
+Învață cum să configurezi Jenkins pentru automatizarea sarcinilor DevOps, incluzând crearea și gestionarea pipeline-urilor CI/CD
 
-# Sarcina
+# Configurarea Controlerului Jenkins
 
-Curatarea fisierelor temporare:
-
-Pregatim mediul de executare 
-
-<img width="753" height="156" alt="image" src="https://github.com/user-attachments/assets/7d8b1ef7-90a5-4fd4-b1f5-9ff5eaa9d8b1" />
-
-
-Scriptul trebuie să se numească cleanup.sh
-
-<img width="408" height="58" alt="image" src="https://github.com/user-attachments/assets/543d71ba-1331-49ab-9559-25542adca9b2" />
-
-Scriptul trebuie să accepte cel puțin un argument: calea către directorul care trebuie curățat
+Adaugă configurația serviciului Controlerului Jenkins la fișierul docker-compose.yml:
 
 ```
-if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <directory_to_clean> [file_type_1] [file_type_2] ..."
-    echo "By default, files with a .tmp extension are deleted."
-    exit 1
-fi
+services:
+  jenkins-controller:
+    image: jenkins/jenkins:lts
+    container_name: jenkins-controller
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    networks:
+      - jenkins-network
+
+volumes:
+  jenkins_home:
+  jenkins_agent_volume:
+
+networks:
+  jenkins-network:
+    driver: bridge
 ```
 
-Argumentele rămase sunt opționale și specifică tipurile de fișiere care trebuie șterse (ex: .tmp, .log).
+# Configurarea Agentului SSH
 
-1. Extragerea argumentelor opționale
-
-```
-shift
-FILE_TYPES=("$@")
-```
-
-shift-muta toti parametrii de pozitie ($1, $2, $3, etc.) cu o pozitie la stanga. 
-
-Astfel, primul argument ($1, care era directorul) este eliminat, iar $2 devine noul $1, $3 devine noul $2 si asa mai departe.
-
-
-Implicit, fișierele cu extensia .tmp sunt șterse.
+Creează un dosar (director) numit secrets la rădăcina proiectului tău și adaugă cheile SSH necesare pentru conectarea la serverele la distanță (remote).
 
 ```
-if [ ${#FILE_TYPES[@]} -eq 0 ]; then
-    FILE_TYPES=(".tmp")
-fi
+mkdir secrets
+cd secrets
+ssh-keygen -t rsa -b 4096 -f jenkins_agent_ssh_key -m PEM
 ```
 
-La finalul execuției, scriptul trebuie să afișeze numărul de fișiere șterse
+Creaza un fișier Dockerfile pentru un agent SSH cu urmatorul conținut 
 
 ```
-DELETED_COUNT=0 #initializam contorul de fisiere sterse
+FROM jenkins/ssh-agent
 
-echo "Starting cleanup in directory '$CLEAN_DIR'..."
+RUN apt-get update && apt-get install -y php-cli
+```
 
-for TYPE in "${FILE_TYPES[@]}"; do #parcurgem fiecare tip de fisier specificat
+Adaugă configurația serviciului Agentului SSH la fișierul docker-compose.yml:
 
-    echo "Searching for files with extension '$TYPE'..." #afisam tipul curent de fisier
+```
+sh-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ssh-agent
+    environment:
+      - JENKINS_AGENT_SSH_PUBKEY=${JENKINS_AGENT_SSH_PUBKEY}
+    volumes:
+      - jenkins_agent_volume:/home/jenkins/agent
+    depends_on:
+      - jenkins-controller
+    networks:
+      - jenkins-network
+```
 
-    CURRENT_DELETED=$(find "$CLEAN_DIR" -type f -name "*$TYPE" -delete -print | wc -l) #stergem fisierele si numaram cate au fost sterse
+Creează un fișier .env la rădăcina proiectului tău și adaugă variabila de mediu JENKINS_AGENT_SSH_PUBKEY
+
+<img width="1135" height="57" alt="image" src="https://github.com/user-attachments/assets/bcdbecf4-4b37-40a7-b9f7-6c7c9969ac09" />
+
+Repornește proiectul Docker Compose pentru a aplica modificările.
+
+# Conectarea Agentului SSH la Jenkins
+
+Verificarea și Instalarea Plugin-ului
+
+Verifică dacă "SSH Agents Plugin" este instalat în Jenkins. Dacă nu este, instalează-l navigând la: Manage Jenkins > Manage Plugins (Administrare Jenkins > Administrare Plugin-uri).
+
+<img width="1384" height="232" alt="image" src="https://github.com/user-attachments/assets/a62b2c6c-bf45-4a62-a733-d6ee8f2169fd" />
+
+Înregistrarea Cheilor SSH în Jenkins
+
+Autentifică-te în interfața web Jenkins la adresa http://localhost:8080.
+
+Navighează la: Manage Jenkins > Manage Credentials (Administrare Jenkins > Administrare Credențiale).
+
+Adaugă o cheie SSH nouă, setând numele de utilizator (username) la jenkins și selectând cheia privată corespunzătoare din dosarul secrets.
+
+<img width="590" height="403" alt="image" src="https://github.com/user-attachments/assets/840ed31e-ffd3-4f78-8b63-bc83c403d0a9" />
+
+Adăugarea unui Nod Agent Jenkins
+
+Navighează la: Manage Jenkins > Manage Nodes and Clouds > New Node (Administrare Jenkins > Administrare Noduri și Cloud-uri > Nod Nou).
+
+Numește nodul ssh-agent1 și selectează tipul Permanent Agent (Agent Permanent).
+
+Adaugă eticheta (label) php-agent pentru nod.
+
+Configurează nodul specificând:
+
+Remote root directory (Director rădăcină la distanță): /home/jenkins/agent
+
+Launch method (Metodă de lansare): Launch agents via SSH (Lansează agenți prin SSH)
+
+Host (Gazdă): ssh-agent
+
+Credentials (Credențiale): selectează cheia SSH adăugată anterior.
+
+<img width="612" height="243" alt="image" src="https://github.com/user-attachments/assets/f3db954c-9446-4fe9-a425-146753604802" />
+
+<img width="588" height="401" alt="image" src="https://github.com/user-attachments/assets/0bf046c7-d8c0-4b81-b828-4d3d67c1c57a" />
+
+# Crearea unui Pipeline Jenkins pentru Automatizarea Sarcinilor DevOps
+
+Alege un repository (depozit) cu un proiect PHP pe GitHub (de exemplu, unul din cursurile "Programare PHP" sau "Virtualizare și Containerizare").
+
+Proiectul trebuie să conțină teste unitare.
+
+Am ales proiectul in care sa lucrat cu GitHub Actions https://github.com/JeneaGv/containers08
+
+<img width="1242" height="718" alt="image" src="https://github.com/user-attachments/assets/c5ae84ce-5d4d-46bf-b165-ff992b365fa7" />
+
+Creează un pipeline Jenkins nou folosind următorul fișier Jenkinsfile(care lam adaugat la proiectul existent):
+
+```
+pipeline {
+    agent {
+        label 'php-agent'
+    }
     
-    DELETED_COUNT=$((DELETED_COUNT + CURRENT_DELETED)) #actualizam contorul total
-done
+    stages {        
+        stage('Install Dependencies') {
+            steps {
+                // Project preparation (install dependencies if needed)
+                echo 'Preparing project...'
+                // Add project-specific commands here
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                // Running tests
+                echo 'Running tests...'
+                // Add commands to run your tests here
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Pipeline completed.'
+        }
+        success {
+            echo 'All stages completed successfully!'
+        }
+        failure {
+            echo 'Errors detected in the pipeline.'
+        }
+    }
+}
 ```
 
-Scriptul trebuie să verifice dacă directorul specificat există și să afișeze mesaje de eroare corespunzătoare.
+Verifică dacă pipeline-ul se execută cu succes și că testele unitare trec.
 
-```
-if [ ! -d "$CLEAN_DIR" ]; then
-    echo "Error: Directory '$CLEAN_DIR' does not exist."
-    exit 1
-fi
-```
+<img width="1572" height="445" alt="image" src="https://github.com/user-attachments/assets/c719b35c-22ed-47d0-b2c3-26f731492e08" />
 
-# Verificarea lucrarii scriptului 
+<img width="940" height="244" alt="image" src="https://github.com/user-attachments/assets/69d86398-eb8f-4b99-a81a-5cafcd236d40" />
 
-cu ajutorul comenzii touch cream fisiere cu diferite extensii
+# Raspunsuri la intrebari 
 
-<img width="456" height="143" alt="image" src="https://github.com/user-attachments/assets/3cace306-b9f4-423e-a519-d42f7413c5e8" />
+1.Avantajele utilizării Jenkins pentru automatizarea sarcinilor DevOps:
 
-Prima data incercam scriptul fara a indica extensiile dorite:
+Principalele avantaje sunt: Automatizarea CI/CD: Asigură integrarea continuă (CI) și livrarea/implementarea continuă (CD), reducând erorile manuale și accelerând ciclul de lansare. 
 
-<img width="753" height="81" alt="image" src="https://github.com/user-attachments/assets/919e7965-20d3-4461-a1f0-3c93368cd93a" />
+Scalabilitate și Distribuție: Poate distribui sarcinile pe mai mulți agenți, permițând rularea testelor și a build-urilor în paralel pentru proiecte mari. 
 
-<img width="436" height="93" alt="image" src="https://github.com/user-attachments/assets/84ffc11b-2b1f-4d6c-9c17-32b2e09ba589" />
+Extensibilitate: Are o comunitate vastă și mii de plugin-uri care îi permit să se integreze cu aproape orice instrument DevOps (Git, Docker, Kubernetes, etc.). 
 
-Observam rezultatul ca au fost sterse fisierele cu extensia .tmp
+Open Source și Maturitate: Este un instrument gratuit, bine stabilit și larg adoptat în industrie.
 
-Acum cream din nou fisierele sterse si incercam sa specificam extensiile dorite 
+2.Alte tipuri de Agenți Jenkins
 
-<img width="749" height="79" alt="image" src="https://github.com/user-attachments/assets/712ef66d-2a9a-4d85-8fcf-f0f5550dcab6" />
+Jenkins oferă următoarele tipuri de agenți:
 
-<img width="439" height="56" alt="image" src="https://github.com/user-attachments/assets/cfe64424-d117-466a-a28d-91e25b8d2ff7" />
+Agenți Permanenți (care lam folosit in cadrul laboratorului)
 
-Observam ca a ramas doar fisierul .txt => scriptul a fost creat cu succes
+Agenți Dinamici (Agenți la Cerere)
 
-# Concluzie 
+3.Probleme întâmpinate la configurarea Jenkins și soluțiile lor
 
-Scriptul cleanup.sh este un exemplu excelent de automatizare a unei sarcini simple, dar repetitive, pe care o poți rula pe orice sistem de operare bazat pe Linux, inclusiv WSL. A
+Greseala de atenție căci n-am adaugat deplin fișierul cu cheia SSH din fișierul jenkins_agent_ssh_key dar,doar cheia.
 
-m reușit să creăm un script care este nu doar funcțional, dar și robust, îndeplinind toate cerințele inițiale: validarea argumentelor, flexibilitatea de a accepta tipuri de fișiere personalizate, 
+Această greșeala am rezolvat analizând fișierul de loguri.
 
-gestionarea erorilor prin verificarea existenței directorului și oferirea unui feedback clar prin afișarea numărului de fișiere șterse. 
+În rest alte probleme nu s-au întâlnit
 
-Acest script demonstrează cum câteva rânduri de cod de shell pot economisi timp și simplifica sarcinile de mentenanță de bază, fiind o bază solidă pentru a construi scripturi mai complexe în viitor.
-
-# Bilbiografia
-
-https://www.shellscript.sh/
-
-https://tldp.org/LDP/abs/html/
-
-https://tldp.org/LDP/Bash-Beginners-Guide/html/
-
-https://linuxcommand.org/tlcl.php
-
-https://www.gnu.org/software/bash/manual/bash.html
-
-
-
-
-
-
-   
