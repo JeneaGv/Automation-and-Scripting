@@ -51,7 +51,8 @@ RUN apt-get update && apt-get install -y php-cli
 Adaugă configurația serviciului Agentului SSH la fișierul docker-compose.yml:
 
 ```
-sh-agent:
+ssh-agent:
+
     build:
       context: .
       dockerfile: Dockerfile
