@@ -16,7 +16,7 @@ pipeline {
 
         stage('Setup Test Server with Ansible') {
             steps { 
-                sh 'ansible-playbook -i lab05/ansible/hosts.ini lab05/ansible/setup_test_server.yml'
+                sh 'ansible-playbook -i ansible/hosts.ini ansible/setup_test_server.yml'
             }
         }
     }
