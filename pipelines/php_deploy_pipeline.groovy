@@ -1,61 +1,53 @@
 pipeline {
-    agent {
-        label 'ansible-agent'
-    }
-    
+    agent { label 'ansible-agent' }
+
     stages {
-        stage('Checkout Ansible Config') {
+        stage('Clone PHP Application') {
             steps {
-                dir('ansible-config') {
-                    git url: 'https://github.com/JeneaGv/Automation-and-Scripting.git', 
-                        branch: 'lab5'
-                }
-            }
-        }
-        
-        stage('Checkout PHP Application') {
-            steps {
-                dir('php-app') {
-                    git url: 'https://github.com/JeneaGv/containers08.git', 
-                        branch: 'main'
-                }
+                git branch: 'main', url: 'https://github.com/JeneaGv/containers08.git'
             }
         }
 
-        stage('Deploy Project to Test Server') {
+        stage('Deploy Files via Synchronize (SSH)') {
             steps {
                 sh '''
-                  cat > /tmp/deploy_temp.yml <<'EOF'
----
-- name: Deploy PHP Project
-  hosts: test_servers
-  become: yes
-  tasks:
-    - name: Ensure project directory exists
-      ansible.builtin.file:
-        path: /var/www/html/php_project
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
+                echo "--- Preparing deployment environment ---"
+                
+                
+                export ANSIBLE_HOST_KEY_CHECKING=False
 
-    - name: Copy site directory contents
-      ansible.builtin.copy:
-        src: php-app/site/
-        dest: /var/www/html/php_project/
-        owner: www-data
-        group: www-data
-        mode: '0755'
+                
+                echo "[webservers]\\ntest-server ansible_host=test-server ansible_user=ansible" > hosts.ini
 
-    - name: Restart Apache
-      ansible.builtin.service:
-        name: apache2
-        state: restarted
-EOF
-                  # Ajustează path-ul către hosts.ini în funcție de structură
-                  ansible-playbook -i ansible-config/lab05/ansible/hosts.ini /tmp/deploy_temp.yml
+               
+                echo "Files to be copied:"
+                ls -la site/
+
+                echo "--- Starting deployment using Ansible synchronize ---"
+
+               
+                ansible webservers -i hosts.ini -m synchronize -a "src=site/ dest=/var/www/html/ delete=yes rsync_opts=--exclude=.git" --become
+                
+                
+                echo "--- Setting permissions and verifying deployment ---"
+                
+                
+                ansible webservers -i hosts.ini -m shell -a "chown -R www-data:www-data /var/www/html/ && service apache2 restart" --become
                 '''
             }
+        }
+    }
+    
+   
+    post {
+        always {
+            cleanWs()
+        }
+        failure {
+             echo "Deployment failed."
+        }
+        success {
+             echo "Deployment successful."
         }
     }
 }
