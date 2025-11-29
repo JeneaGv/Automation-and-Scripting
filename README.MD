@@ -330,6 +330,7 @@ File: `lab05/ansible/setup_test_server.yml`
 - name: Configure Test Server Environment (Apache & PHP)
   hosts: test_servers
   become: yes
+  connection: docker
   tasks:
     - name: Install Apache2, PHP, and required extensions
       ansible.builtin.apt:
@@ -531,113 +532,55 @@ pipeline {
 
 ```groovy
 pipeline {
-    agent {
-        label 'ansible-agent'
-    }
-    
+    agent { label 'ansible-agent' }
+
     stages {
-        stage('Checkout Ansible Config') {
+        stage('Clone PHP Application') {
             steps {
-                dir('ansible-config') {
-                    git url: 'https://github.com/JeneaGv/Automation-and-Scripting.git', 
-                        branch: 'lab5'
-                }
-            }
-        }
-        
-        stage('Checkout PHP Application') {
-            steps {
-                dir('php-app') {
-                    git url: 'https://github.com/JeneaGv/containers08.git', 
-                        branch: 'main'
-                }
+                git branch: 'main', url: 'https://github.com/JeneaGv/containers08.git'
             }
         }
 
-        stage('Verify Files') {
+        stage('Deploy Files via Synchronize (SSH)') {
             steps {
                 sh '''
-                    echo "=== Ansible config structure ==="
-                    ls -la ansible-config/
-                    echo ""
-                    echo "=== PHP app structure ==="
-                    ls -la php-app/site/
-                '''
-            }
-        }
+                echo "--- Preparing deployment environment ---"
+                
+                
+                export ANSIBLE_HOST_KEY_CHECKING=False
 
-        stage('Deploy Project to Test Server') {
-            steps {
-                sh '''
-                  cat > /tmp/deploy_temp.yml <<'EOF'
----
-- name: Deploy PHP Project
-  hosts: test_servers
-  become: yes
-  tasks:
-    - name: Ensure project directory exists
-      ansible.builtin.file:
-        path: /var/www/html/php_project
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
+                
+                echo "[webservers]\\ntest-server ansible_host=test-server ansible_user=ansible" > hosts.ini
 
-    - name: Copy site directory contents
-      ansible.builtin.copy:
-        src: php-app/site/
-        dest: /var/www/html/php_project/
-        owner: www-data
-        group: www-data
-        mode: '0755'
+               
+                echo "Files to be copied:"
+                ls -la site/
 
-    - name: Ensure database directory exists
-      ansible.builtin.file:
-        path: /var/www/db
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0777'
+                echo "--- Starting deployment using Ansible synchronize ---"
 
-    - name: Copy database schema
-      ansible.builtin.copy:
-        src: php-app/site/sql/schema.sql
-        dest: /tmp/schema.sql
-
-    - name: Create SQLite database
-      ansible.builtin.shell: |
-        if [ ! -f /var/www/db/db.sqlite ]; then
-          sqlite3 /var/www/db/db.sqlite < /tmp/schema.sql
-          chmod 666 /var/www/db/db.sqlite
-        fi
-
-    - name: Restart Apache
-      ansible.builtin.service:
-        name: apache2
-        state: restarted
-EOF
-                  ansible-playbook -i ansible-config/lab05/ansible/hosts.ini /tmp/deploy_temp.yml
-                '''
-            }
-        }
-        
-        stage('Verify Deployment') {
-            steps {
-                sh '''
-                    echo "Verifying deployment on test-server..."
-                    ssh ansible@test-server "ls -la /var/www/html/php_project/"
+               
+                ansible webservers -i hosts.ini -m synchronize -a "src=site/ dest=/var/www/html/ delete=yes rsync_opts=--exclude=.git" --become
+                
+                
+                echo "--- Setting permissions and verifying deployment ---"
+                
+                
+                ansible webservers -i hosts.ini -m shell -a "chown -R www-data:www-data /var/www/html/ && service apache2 restart" --become
                 '''
             }
         }
     }
     
+   
     post {
-        success {
-            echo 'Deployment completed successfully!'
-            echo 'Access application at: http://localhost:8081/index.php'
+        always {
+            cleanWs()
         }
         failure {
-            echo 'Deployment failed.'
+             echo "Deployment failed."
+        }
+        success {
+             echo "Deployment successful."
         }
     }
 }
@@ -646,26 +589,29 @@ EOF
 ### 7.4 Pipeline Execution Order
 
 1. **Run first:** `Ansible-Setup-Test-Server` - Configures Apache/PHP environment
+
+![Ansible-setup](C:\Users\User\Pictures\Screenshots\first.png)
+
 2. **Run second:** `PHP-Build-and-Test` - Validates code quality (optional)
+
+![Ansible-build](C:\Users\User\Pictures\Screenshots\second.png)
+
 3. **Run third:** `PHP-Deploy-to-Test-Server` - Deploys application
+
+![Ansible-deploy](C:\Users\User\Pictures\Screenshots\third.png)
 
 ### 7.5 Verify Deployment
 
 After successful pipeline execution:
 
-```bash
-# Check deployed files
-docker exec test-server ls -la /var/www/html/php_project/
-
-# Check database
-docker exec test-server sqlite3 /var/www/db/db.sqlite "SELECT * FROM page;"
 
 # Access application
 curl http://localhost:8081/index.php
 # Or open in browser: http://localhost:8081/index.php
 ```
 
----
+### 8.Answer the questions
+
 
 
 
