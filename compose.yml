@@ -38,7 +38,7 @@ services:
       dockerfile: Dockerfile.test_server
     container_name: test-server
     ports:
-      - "8081:80"
+      - "8089:80"
     networks:
       - jenkins-network
 

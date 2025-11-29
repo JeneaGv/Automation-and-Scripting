@@ -1,26 +1,37 @@
 FROM ubuntu:22.04
 
-RUN apt-get update && apt-get install -y \
+# 1. Instalează pachetele necesare: SSH, Ansible utils, Apache și PHP
+RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-server \
     python3 \
     sudo \
-    rsync \ 
+    rsync \
+    apache2 \
+    php \
+    libapache2-mod-php \
     && rm -rf /var/lib/apt/lists/*
 
+# 2. Configurează Apache
+RUN a2enmod rewrite
+
+# 3. Creează directorul de rulare SSH
 RUN mkdir /var/run/sshd
 
+# 4. Creează și configurează utilizatorul Ansible
 RUN useradd -m -s /bin/bash ansible && \
     echo "ansible:ansible" | chpasswd
-
 RUN echo "ansible ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
 RUN mkdir -p /home/ansible/.ssh
 COPY secrets/ansible_server_key.pub /home/ansible/.ssh/authorized_keys
-
 RUN chown -R ansible:ansible /home/ansible/.ssh && \
     chmod 700 /home/ansible/.ssh && \
     chmod 600 /home/ansible/.ssh/authorized_keys
 
+# 5. Setarea permisiunilor (pentru a permite Ansible/rsync să scrie)
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 755 /var/www/html
+
 EXPOSE 22 80
 
-CMD ["/usr/sbin/sshd", "-D"]
+# NOU: Rulează SSH în fundal (&) și Apache în prim-plan (-D FOREGROUND)
+CMD ["/bin/bash", "-c", "/usr/sbin/sshd -D & /usr/sbin/apachectl -D FOREGROUND"]

@@ -6,14 +6,17 @@ pipeline {
     stages {
         stage('Checkout Ansible Playbooks') {
             steps {
-                git url: 'git@github.com:your-repo/ansible-playbooks.git', 
-                    credentialsId: 'github-ssh-credential'
+                git url: 'https://github.com/JeneaGv/Automation-and-Scripting.git', 
+                    branch: 'lab5',
+                    credentialsId: ''
+                    
+                sh 'ls -R'
             }
         }
 
         stage('Setup Test Server with Ansible') {
             steps { 
-                sh 'ansible-playbook -i ansible/hosts.ini ansible/setup_test_server.yml'
+                sh 'ansible-playbook -i lab05/ansible/hosts.ini lab05/ansible/setup_test_server.yml'
             }
         }
     }
