@@ -429,7 +429,7 @@ pipeline {
     stages {
         stage('Checkout Ansible Playbooks') {
             steps {
-                git url: 'https://github.com/YOUR-USERNAME/Automation-and-Scripting.git', 
+                git url: 'https://github.com/JeneaGv/Automation-and-Scripting.git', 
                     branch: 'lab5'
                     
                 sh 'ls -la'
@@ -472,7 +472,7 @@ pipeline {
     stages {
         stage('Checkout Project') {
             steps {
-                git url: 'https://github.com/YOUR-USERNAME/containers08.git', 
+                git url: 'https://github.com/JeneaGv/containers08.git', 
                     branch: 'main'
             }
         }
@@ -539,7 +539,7 @@ pipeline {
         stage('Checkout Ansible Config') {
             steps {
                 dir('ansible-config') {
-                    git url: 'https://github.com/YOUR-USERNAME/Automation-and-Scripting.git', 
+                    git url: 'https://github.com/JeneaGv/Automation-and-Scripting.git', 
                         branch: 'lab5'
                 }
             }
@@ -548,7 +548,7 @@ pipeline {
         stage('Checkout PHP Application') {
             steps {
                 dir('php-app') {
-                    git url: 'https://github.com/YOUR-USERNAME/containers08.git', 
+                    git url: 'https://github.com/JeneaGv/containers08.git', 
                         branch: 'main'
                 }
             }
@@ -666,6 +666,7 @@ curl http://localhost:8081/index.php
 ```
 
 ---
+
 
 
 
