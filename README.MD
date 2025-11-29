@@ -1,4 +1,4 @@
-# Laborator 05: Automatizarea Configurării Serverului cu Ansible și Jenkins
+# Laborator 05: Ansible Playbook pentru Configurarea Serverului
 
 ## 1. Descrierea Proiectului
 Acest laborator extinde pipeline-ul CI/CD din lucrările anterioare prin integrarea Ansible pentru gestionarea configurației (Configuration Management). Obiectivul principal a fost automatizarea completă a ciclului de viață al aplicației: provizionarea infrastructurii (instalare Apache/PHP), testarea codului și livrarea (deployment) pe un server dedicat.
@@ -10,21 +10,73 @@ Arhitectura proiectului utilizează Docker pentru a simula o infrastructură rea
 * **Test Server:** Serverul țintă unde rulează aplicația web.
 
 ## 2. Infrastructura și Pornirea Serviciilor
+
 Infrastructura este definită în fișierul `compose.yaml`. Am creat imagini Docker personalizate pentru agenți (`Dockerfile.ansible_agent`) și server (`Dockerfile.test_server`) pentru a include dependențele necesare (`ansible`, `rsync`, `java`, `openssh`).
 
-<img width="606" height="872" alt="image" src="https://github.com/user-attachments/assets/2c452bde-0a80-4265-b9b4-97c589f673bb" />
+```
+version: '3.8'
+
+services:
+  jenkins-controller:
+    image: jenkins/jenkins:lts
+    container_name: jenkins-controller
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    networks:
+      - jenkins-network
+
+  ssh-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.ssh_agent
+    container_name: ssh-agent
+    environment:
+      - JENKINS_AGENT_SSH_PUBKEY=${JENKINS_AGENT_SSH_PUBKEY}
+    networks:
+      - jenkins-network
+
+  ansible-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.ansible_agent
+    container_name: ansible-agent
+    environment:
+      - JENKINS_AGENT_SSH_PUBKEY=${JENKINS_AGENT_SSH_PUBKEY} 
+    networks:
+      - jenkins-network
+
+  test-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.test_server
+    container_name: test-server
+    ports:
+      - "8081:80"
+    networks:
+      - jenkins-network
+
+volumes:
+  jenkins_home:
+
+networks:
+  jenkins-network:
+    driver: bridge
+```
 
 **Execuția:**
-După configurare, am pornit întreaga infrastructură folosind Docker Compose. Se poate observa că toate cele 4 containere rulează simultan.
+După configurare, pornim containerele.
 
-<img width="974" height="140" alt="image" src="https://github.com/user-attachments/assets/070d5943-b7f6-4638-8c79-798b5c132917" />
+docker compose up -d --build 
 
 ## 3. Gestionarea Securității (SSH)
-Comunicarea între Jenkins, agenți și serverul țintă se realizează securizat prin SSH, fără parole.
-* Am generat o pereche de chei pentru **Jenkins -> Agenți**.
-* Am generat o pereche de chei dedicată pentru **Ansible -> Test Server**.
+Comunicarea între Jenkins agentii si server se realizează prin SSH
+* Am generat o pereche de chei pentru **Jenkins -> Agent**.
+* Am generat o pereche de chei dedicată pentru **Ansible -> Test-Server**.
 
-<img width="974" height="428" alt="image" src="https://github.com/user-attachments/assets/2909bc94-f5f3-46a7-95d0-82fbf73002fd" />
+
 
 ## 4. Configurarea Jenkins
 Pentru a permite rularea playbook-urilor, am configurat un nou agent în Jenkins (`ansible-agent`).
@@ -100,3 +152,4 @@ Pe lângă `apt` și `synchronize`, există module pentru:
 * `user`/`group`: Gestionarea utilizatorilor.
 * `git`: Clonarea repository-urilor.
 * `copy`/`template`: Gestionarea fișierelor de configurare.
+
