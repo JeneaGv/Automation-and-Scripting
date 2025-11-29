@@ -590,15 +590,15 @@ pipeline {
 
 1. **Run first:** `Ansible-Setup-Test-Server` - Configures Apache/PHP environment
 
-![Ansible-setup](C:\Users\User\Pictures\Screenshots\first.png)
+![Ansible-setup]("C:\Users\User\Pictures\Screenshots\first.png")
 
 2. **Run second:** `PHP-Build-and-Test` - Validates code quality (optional)
 
-![Ansible-build](C:\Users\User\Pictures\Screenshots\second.png)
+![Ansible-build]("C:\Users\User\Pictures\Screenshots\second.png")
 
 3. **Run third:** `PHP-Deploy-to-Test-Server` - Deploys application
 
-![Ansible-deploy](C:\Users\User\Pictures\Screenshots\third.png)
+![Ansible-deploy]("C:\Users\User\Pictures\Screenshots\third.png")
 
 ### 7.5 Verify Deployment
 
@@ -611,6 +611,7 @@ curl http://localhost:8081/index.php
 ```
 
 ### 8.Answer the questions
+
 
 
 
