@@ -594,11 +594,11 @@ pipeline {
 
 2. **Run second:** `PHP-Build-and-Test` - Validates code quality (optional)
 
-![Ansible-build]("C:\Users\User\Pictures\Screenshots\second.png")
+<img width="495" height="235" alt="second" src="https://github.com/user-attachments/assets/c220a53b-1aee-4fe0-b27d-edceb78cf55b" />
 
 3. **Run third:** `PHP-Deploy-to-Test-Server` - Deploys application
 
-![Ansible-deploy]("C:\Users\User\Pictures\Screenshots\third.png")
+<img width="554" height="276" alt="third" src="https://github.com/user-attachments/assets/2a9aa88c-a3d7-452f-8c55-3aa75ad5b701" />
 
 ### 7.5 Verify Deployment
 
@@ -609,9 +609,71 @@ After successful pipeline execution:
 curl http://localhost:8081/index.php
 # Or open in browser: http://localhost:8081/index.php
 ```
+<img width="451" height="116" alt="fourth" src="https://github.com/user-attachments/assets/c791cf7b-64a8-4d83-93dc-468030801415" />
+
+The application is operating successfully, and the automation is performing as expected. While some SQL troubles remain and will need future resolution, they do not impede our current goal.
 
 ### 8.Answer the questions
 
+Advantages of Using Ansible and Project Summary
+
+Ansible is an extremely popular open-source automation tool that provides a simple, agentless approach to configuration management and application deployment.
+
+1. What are the advantages of using Ansible for server configuration?
+
+The main advantages of Ansible, which make it ideal for tasks such as deploying your PHP application to the test-server container, are:
+
+Agentless: This is the biggest advantage. Ansible connects to managed nodes (servers, containers) using SSH (for Linux/Unix) or WinRM (for Windows). It requires no specialized software to be installed, configured, or run on the target servers. This reduces complexity and the attack surface.
+
+Simplicity and Readability (YAML): Ansible Playbooks are written in YAML (Yet Another Markup Language), a simple, human-readable data format. Even a beginner can quickly understand what a playbook does.
+
+Idempotence: Ansible ensures that the final state of the system matches the one defined in the playbook. If you run the same playbook ten times, Ansible will only make changes the first time or if it detects a difference. This prevents errors and ensures environment consistency.
+
+Flexibility: It can be used for configuration management, continuous deployment (CI/CD), orchestration, and automation of ad-hoc tasks.
+
+Performance and Low Resources: Since there are no continuously running agents, fewer resources are consumed on the managed servers.
+
+2. What other Ansible modules exist for configuration management?
+
+Ansible has thousands of modules, allowing for the automation of virtually any task. In addition to the modules used in your playbook (ansible.builtin.file, ansible.builtin.copy, ansible.builtin.service, ansible.builtin.shell, and synchronize), other key modules include:
+
+Package Management (apt, yum, dnf): For installing or removing packages on different Linux distributions.
+
+Templating (template): For dynamically generating complex configuration files from a Jinja2 template.
+
+Users and Groups (user, group): For creating, modifying, or deleting user accounts.
+
+Databases (community.mysql.mysql_user, postgresql_db): For managing users and databases.
+
+Networking (nmcli, community.network.cisco_ios_config): For configuring network interfaces or dedicated network devices.
+
+3. What problems did you encounter when creating the Ansible Playbook and how did you solve them?
+
+Problem 1: Inventory Localization Failure
+
+Symptom: The Playbook failed with the warning [WARNING]: Could not match supplied host pattern, ignoring: test_servers.
+
+Cause: The path to the hosts.ini inventory file was either incorrect, or the inventory was read, but Ansible defaulted to the SSH connection, which was not properly configured.
+
+Solution (Dual):
+
+The inventory path was corrected, or the inventory was created on the fly within the pipeline.
+
+The Playbook was modified to use connection: docker instead of SSH (in the Playbook version) or SSH access with keys to the container was ensured (in the synchronize version).
+
+Problem 2: Missing Docker Tool
+
+Symptom: The verification stage failed with the error docker: not found.
+
+Cause: The docker tool (Docker CLI client) was not installed on the Jenkins agent (ansible-agent), or the jenkins user lacked the necessary permissions to run it.
+
+Solution: The Docker CLI was installed on the agent machine, and the jenkins user was added to the docker group (sudo usermod -aG docker jenkins), followed by a restart of the agent service.
+
+Problem 3: Inefficient Copying/Missing Restart
+
+Symptom: The application did not update after deployment, or files were copied into an incorrect structure.
+
+Solution: The synchronize module was adopted for copying, which is more efficient than the copy module for entire directories, and the task to restart the apache2 service was added to ensure the web server loads the new PHP files.
 
 
 
