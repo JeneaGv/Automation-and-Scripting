@@ -2,6 +2,7 @@
 - name: Configure Test Server Environment (Apache & PHP)
   hosts: test_servers
   become: yes
+  connection: docker
   tasks:
     - name: Install Apache2, PHP, and required extensions
       ansible.builtin.apt:
