@@ -144,13 +144,10 @@ CMD ["/usr/sbin/sshd", "-D"]
 
 ### 4.2 Generate SSH Keys
 
-```bash
-# Generate key for Ansible to access test-server
-ssh-keygen -t ed25519 -f lab05/secrets/ansible_server_key -N ""
+Go to secrets directory
 
-# This creates:
-# - ansible_server_key (private key)
-# - ansible_server_key.pub (public key)
+```bash
+ssh-keygen -f ansible_server_key
 ```
 
 ### 4.3 Configure Ansible Agent Node in Jenkins
@@ -197,6 +194,7 @@ FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Install all necessary packages
 RUN apt-get update && apt-get install -y \
     openssh-server \
     python3 \
@@ -209,16 +207,18 @@ RUN apt-get update && apt-get install -y \
     php-cli \
     php-xml \
     php-mbstring \
-    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
+# Setup SSH
 RUN mkdir /var/run/sshd
 
+# Create ansible user
 RUN useradd -m -s /bin/bash ansible && \
     echo "ansible:ansible" | chpasswd
 
 RUN echo "ansible ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
+# Setup SSH keys
 RUN mkdir -p /home/ansible/.ssh
 COPY secrets/ansible_server_key.pub /home/ansible/.ssh/authorized_keys
 
@@ -226,22 +226,20 @@ RUN chown -R ansible:ansible /home/ansible/.ssh && \
     chmod 700 /home/ansible/.ssh && \
     chmod 600 /home/ansible/.ssh/authorized_keys
 
+# Setup Apache
 RUN mkdir -p /var/www/html/php_project && \
-    chown -R www-data:www-data /var/www/html && \
+    chown -R www-data:www-data /var/www/html/php_project && \
     a2enmod rewrite
 
-RUN echo '<?php phpinfo(); ?>' > /var/www/html/info.php
-RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+# Create a simple test page
+RUN echo "<?php phpinfo(); ?>" > /var/www/html/info.php
 
 EXPOSE 22 80
 
+# Create startup script
 RUN echo '#!/bin/bash\n\
-set -e\n\
-echo "Starting Apache..."\n\
 service apache2 start\n\
-echo "Apache started"\n\
-echo "Starting SSH..."\n\
-exec /usr/sbin/sshd -D' > /start.sh && \
+/usr/sbin/sshd -D' > /start.sh && \
     chmod +x /start.sh
 
 CMD ["/start.sh"]
@@ -660,5 +658,6 @@ curl http://localhost:8081/index.php
 ```
 
 ---
+
 
 
