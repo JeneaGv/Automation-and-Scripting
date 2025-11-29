@@ -110,12 +110,14 @@ FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         openssh-server \
         python3 \
         python3-pip \
+        rsync \
         git \
         sudo \
+        openjdk-17-jre \
     && pip3 install ansible \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -125,6 +127,8 @@ RUN useradd -m -d /home/jenkins -s /bin/bash jenkins && \
     chown -R jenkins:jenkins /home/jenkins/.ssh
 
 RUN mkdir /var/run/sshd
+RUN echo 'root:root' | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 COPY secrets/jenkins_agent_ssh_key.pub /home/jenkins/.ssh/authorized_keys
 RUN chmod 600 /home/jenkins/.ssh/authorized_keys && \
@@ -134,11 +138,7 @@ COPY secrets/ansible_server_key /home/jenkins/.ssh/id_ed25519
 RUN chmod 600 /home/jenkins/.ssh/id_ed25519 && \
     chown jenkins:jenkins /home/jenkins/.ssh/id_ed25519
 
-RUN echo "Host *\n\tStrictHostKeyChecking no\n" >> /home/jenkins/.ssh/config && \
-    chown jenkins:jenkins /home/jenkins/.ssh/config
-
 EXPOSE 22
-
 CMD ["/usr/sbin/sshd", "-D"]
 ```
 
@@ -660,4 +660,5 @@ curl http://localhost:8081/index.php
 ```
 
 ---
+
 
