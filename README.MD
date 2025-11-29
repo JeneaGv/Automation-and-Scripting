@@ -590,7 +590,7 @@ pipeline {
 
 1. **Run first:** `Ansible-Setup-Test-Server` - Configures Apache/PHP environment
 
-![Ansible-setup]("C:\Users\User\Pictures\Screenshots\first.png")
+<img width="595" height="304" alt="first" src="https://github.com/user-attachments/assets/a96d1278-03f7-48d7-bb97-b12ee041471c" />
 
 2. **Run second:** `PHP-Build-and-Test` - Validates code quality (optional)
 
@@ -611,6 +611,7 @@ curl http://localhost:8081/index.php
 ```
 
 ### 8.Answer the questions
+
 
 
 
