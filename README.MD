@@ -331,39 +331,47 @@ File: `lab05/ansible/setup_test_server.yml`
   hosts: test_servers
   become: yes
   tasks:
-    - name: Ensure Apache is running
-      ansible.builtin.service:
-        name: apache2
-        state: started
-        enabled: yes
+    - name: Install Apache2, PHP, and required extensions
+      ansible.builtin.apt:
+        name: 
+          - apache2
+          - php
+          - libapache2-mod-php
+          - php-mysql
+          - php-cli
+          - php-xml
+          - php-mbstring
+        state: present
+        update_cache: yes
 
     - name: Create project web root directory
       ansible.builtin.file:
         path: /var/www/html/php_project
         state: directory
-        owner: www-data
-        group: www-data
+        owner: ansible
+        group: ansible
         mode: '0755'
 
     - name: Configure Apache Virtual Host
-      ansible.builtin.copy:
-        dest: /etc/apache2/sites-available/000-default.conf
-        content: |
+      ansible.builtin.blockinfile:
+        path: /etc/apache2/sites-available/000-default.conf
+        block: |
           <VirtualHost *:80>
               ServerAdmin webmaster@localhost
               DocumentRoot /var/www/html/php_project
               <Directory /var/www/html/php_project>
-                  Options Indexes FollowSymLinks
                   AllowOverride All
                   Require all granted
               </Directory>
               ErrorLog ${APACHE_LOG_DIR}/error.log
               CustomLog ${APACHE_LOG_DIR}/access.log combined
           </VirtualHost>
+        marker: "# ANSIBLE MANAGED BLOCK FOR PHP_PROJECT"
         
-    - name: Enable rewrite module
-      ansible.builtin.command:
-        cmd: a2enmod rewrite
+    - name: Enable rewrite module and restart Apache
+      ansible.builtin.apache2_module:
+        state: present
+        name: rewrite
       notify: Restart Apache
 
   handlers:
@@ -658,6 +666,7 @@ curl http://localhost:8081/index.php
 ```
 
 ---
+
 
 
 
