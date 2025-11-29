@@ -609,13 +609,13 @@ After successful pipeline execution:
 
 curl http://localhost:8081/index.php
 
-# Or open in browser: http://localhost:8081/index.php
+Or open in browser: http://localhost:8081/index.php
 
 <img width="451" height="116" alt="fourth" src="https://github.com/user-attachments/assets/c791cf7b-64a8-4d83-93dc-468030801415" />
 
 The application is operating successfully, and the automation is performing as expected. While some SQL troubles remain and will need future resolution, they do not impede our current goal.
 
-### 8.Answer the questions
+# 8.Answer the questions
 
 Advantages of Using Ansible and Project Summary
 
@@ -676,6 +676,7 @@ Problem 3: Inefficient Copying/Missing Restart
 Symptom: The application did not update after deployment, or files were copied into an incorrect structure.
 
 Solution: The synchronize module was adopted for copying, which is more efficient than the copy module for entire directories, and the task to restart the apache2 service was added to ensure the web server loads the new PHP files.
+
 
 
 
